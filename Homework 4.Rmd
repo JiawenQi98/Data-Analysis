@@ -1,0 +1,78 @@
+---
+title: "Homework 4"
+author: "Jiawen Qi (jiq10)"
+date: "November 1, 2016"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Step 1: Read in the iris data
+
+In RStudio, there is iris data.
+
+```{r, warning=FALSE}
+iris <- iris
+summary(iris) # give a summary to the iris
+```
+
+## Step 2: Randomly pick 50 observations to be the testing dataset
+
+```{r, warning=FALSE}
+testing <- iris[sample(1:150, 50),] # get a random testing dataset
+```
+
+## Step 3: Do the classification method 100 times
+
+```{r, warning=FALSE}
+library(class) # open the class to use knn
+for (i in 1:100) { # do this loop 100 times
+  training <- iris[sample(1:150, 100, replace = TRUE),] # taking a random sample of a size 100 from iris as training with replacement
+  # build a model predicting what type of iris the observation is given its sepal width
+  train.data <- as.matrix(training$Sepal.Width) # get the value of sepal width
+  train.class <- as.matrix(training$Species) # get the class
+  test.data <- as.matrix(testing$Sepal.Width) # get the date to be predicted
+  knn5 = knn(train.data,            # training data as a matrix
+             test.data,             # testing data as a matrix
+             train.class,           # class for training data
+             k=5)                   # k = 5
+  test.predicted <- data.frame(test.data, pred = knn5) # get predicted values for test
+  testing[,i+5] <- test.predicted$pred # merge predicted into iris
+}
+```
+
+## Step 4: Count the predict results
+
+I will count the frequency of predict results for each obsercation. And treat the class with highest frequency as the predicted result.
+
+```{r, warning=FALSE}
+results <- testing[,c(5:105)]
+results <- cbind.data.frame(predictAs = 0, results) # create  columns to count the results
+row.names(results) <- c(1:50) # rename the row
+for (i in 1:50) {
+  predictCount<- table(t(results[i,3:102])) # get the frequency
+  predictCountFrame <- as.data.frame(predictCount) # change to a data frame
+  predictClass <- predictCountFrame[predictCountFrame$Freq == max(predictCountFrame$Freq),1] # get the class of the high frequency
+  predictClass <- as.character(predictClass)
+  results$predictAs[i] <- predictClass # save to the predictAs
+}
+```
+
+## Step 5: Confusion Matrix
+
+```{r, warning=FALSE}
+confusionMatrix <- table(results$predictAs, results$Species) # get matrix
+print(confusionMatrix) # print the confusion matrix
+```
+
+## Step 6: Calculate the accuracy rate and compare with homework 3
+
+```{r, warning=FALSE}
+accuracy = (confusionMatrix[1,1]+confusionMatrix[2,2]+confusionMatrix[3,3]) / 50
+print("The accuracy is:")
+print(accuracy)
+```
+
+Compare with my homework 3, the accuracy in homework 4 is higher.

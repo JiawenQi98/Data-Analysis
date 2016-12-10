@@ -1,0 +1,124 @@
+---
+title: "Homework 6"
+author: "Jiawen Qi (jiq10)"
+date: "November 29, 2016"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Open the package we need
+
+```{r}
+library(tm)
+library(SnowballC)
+```
+
+# 2. Data Import
+
+Create a corpus for some Reuters documents.
+
+```{r}
+reut21578 <- system.file("texts", "crude", package = "tm")
+reuters <- VCorpus(DirSource(reut21578), readerControl = list(reader = readReut21578XMLasPlain))
+# inspect corpora
+inspect(reuters)
+print(reuters[[1]]$content) # print the first document to later checks
+```
+
+There are 20 Reuters documents.
+
+# 3. Transformations
+
+## 3.1 Convert to Lower Case
+
+```{r}
+reuters <- tm_map(reuters, content_transformer(tolower))
+print(reuters[[1]]$content) # Upper case are changed to lower case 
+```
+
+## 3.2 Remove Numbers
+```{r}
+reuters <- tm_map(reuters, removeNumbers)
+print(reuters[[1]]$content) # Numbers are removed
+```
+
+## 3.3 Remove Punctuations
+```{r}
+reuters <- tm_map(reuters, removePunctuation)
+print(reuters[[1]]$content) # Punctuations are removed 
+```
+
+## 3.4 Eliminating Extra Whitespace
+
+```{r}
+reuters <- tm_map(reuters, stripWhitespace)
+print(reuters[[1]]$content) # extra whitespaces are removed 
+```
+
+## 3.5 Remove Stopwords
+
+```{r}
+reuters <- tm_map(reuters, removeWords, stopwords("english")) 
+print(reuters[[1]]$content) # stopwords are removed
+```
+
+## 3.6 Stemming
+
+```{r}
+reuters <- tm_map(reuters, stemDocument, language="english") 
+print(reuters[[1]]$content) # documents are stemmed
+```
+
+## 3.7 Plaintext
+
+```{r}
+reuters <- tm_map(reuters, stripWhitespace) # remove space again
+reutersTitles <- c("127", "144", "191", "194", "211",
+                  "236", "237", "242", "246", "248", 
+                  "273", "349", "352", "353", "368", 
+                  "489", "502", "543", "704", "708")
+reuters <- tm_map(reuters, PlainTextDocument) # get plain text
+print(reuters[[1]]$content) # transformations are done
+```
+
+# 4. Creating Term-Document Matrices
+
+```{r}
+dtm <- DocumentTermMatrix(reuters, control = list(weighting=weightTfIdf))
+dtm$dimnames$Docs <- reutersTitles
+inspect(dtm[1:5, 1:5]) # check 5 terms for 5 documents
+dtm # 20 documents and 865 terms
+```
+
+# 5. Make a smaller dataset
+
+```{r}
+dtm <- removeSparseTerms(dtm, 0.6)
+dtm # the original dataset is 20 documents with 14 terms
+```
+
+# 5. Hierarchal Clustering of Documents (Euclidian Distance)
+
+```{r}
+library(cluster)   
+d <- dist(dtm, method="euclidian") # use euclidian distance
+fit <- hclust(d=d, method="ward.D") # get hierarchal cluster
+fit
+plot(fit, hang=-1, main = "Hierarchal Clustering of Documents (Euclidian Distance)")
+groups <- cutree(fit, k=3)   # "k=" defines the number of clusters you are using   
+rect.hclust(fit, k=3, border="red") # draw dendogram with red borders around the 3 clusters 
+```
+
+# 6. Hierarchal Clustering of Terms (Euclidian Distance)
+
+```{r}
+d <- dist(t(dtm), method="euclidian")   
+fit <- hclust(d=d, method="ward.D")
+fit
+plot(fit, hang=-1, main = "Hierarchal Clustering of Terms (Euclidian Distance)")
+groups <- cutree(fit, k=3)   # "k=" defines the number of clusters you are using   
+rect.hclust(fit, k=3, border="red") # draw dendogram with red borders around the 3 clusters 
+```

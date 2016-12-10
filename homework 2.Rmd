@@ -1,0 +1,219 @@
+---
+title: "Homework 2"
+author: "Jiawen Qi (jiq10)"
+date: "September 25, 2016"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Download the iris data from courseweb
+
+I created a project for this homework, so the dataset can be read directly by the name without the path. When reading the csv file, `header = FALSE` because there is no column name in the original dataset. `stringAsFactor = FALSE` because I don't want the last column, Species, to be changed into factors automatically.
+
+```{r}
+iris <- read.csv("iris.csv", header = FALSE, stringsAsFactors = FALSE)
+```
+
+Using `dim()` to check the dimension of iris dataset.
+
+```{r}
+dim(iris)
+```
+
+From the result, we can know that there are 150 observations and 5 columns. So let's see the first several observations in this dataset using `head()`. And get a summary using `summary()`.
+
+```{r}
+head(iris)
+summary(iris)
+```
+
+We need to rename the columns. Use `names()`.
+
+```{r}
+names(iris) <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width", "Species")
+```
+
+## 2. Delete the setosa iris cases
+
+First, let's check the species in this dataset using `table()`.
+
+```{r}
+table(iris$Species)
+```
+
+From the result, we can know that there are 50 Iris-setosa, 50 Iris-versicolor, and 50 Iris-virginica. Now we will delete the Iris-setosa cases by `subset()` and then save to a new data frame `iris_1`.
+
+```{r}
+iris_1 <- subset(iris, !(Species %in% c("Iris-setosa")))
+```
+
+Check the first several observations of `iris_1`.
+
+```{r}
+head(iris_1)
+```
+
+## 3. Keep petal width and sepal width and iris type.
+
+To keep these three columns, we can use function, `subset()`. Then save to a new variable `iris_2`.
+
+```{r}
+iris_2 <- subset(iris_1, select = c(Sepal.Width, Petal.Width, Species))
+```
+
+Check the `iris_2` using `head()`.
+
+```{r}
+head(iris_2)
+```
+
+## 4. Make a dummy variable for iris type
+
+To make a dummy variable, there is a package called `dummies` that can help me. Open that package first.
+
+```{r}
+library(dummies)
+```
+
+Then, create the dummy for iris type, Species. The function is `dummy()`. Save to the variable `dummyForSpecies`, and change to a data frame.
+
+```{r}
+dummyForSpecies <- dummy(iris_2$Species)
+dummyForSpecies <- as.data.frame(dummyForSpecies)
+```
+
+Actually, we only need one column in dummyForSpecies because there are only to levels: Iris-versicolor and Iris-virginica. If it is not Iris-versicolor, it must be Iris-virginica. To make the dataset clear enough, I will keep both.Let's check the first several observations of `dummyForSpecies`.
+
+```{r}
+names(dummyForSpecies) <- c("SpeciesIris-versicolor", "SpeciesIris-virginica")
+head(dummyForSpecies)
+```
+
+Combine the `iris_2` and `dummyForSpecies` using `cbind.data.frame()`. And save to a new varibale `iris_3`.
+
+```{r}
+iris_3 <- cbind.data.frame(iris_2, dummyForSpecies)
+head(iris_3)
+```
+
+## 5. Create a random number, sort the data by that random number
+
+Create a column to store random number, generate a random number for each observation and then sort by the random number column. 
+
+```{r}
+set.seed(66666)
+iris_3$randomNumber <- 0
+for (i in 1:length(iris_3$randomNumber)) {
+  iris_3$randomNumber[i] <- runif(1)
+}
+iris_4 <- iris_3[order(iris_3$randomNumber),]
+head(iris_4)
+```
+
+## 6.  Divide the data (100 obs) into 10 groups based on their order
+
+We need to remove the randomNumber column using `subset()`, save as `iris_5`
+
+```{r}
+iris_5 <- subset(iris_4, select = -randomNumber)
+head(iris_5)
+```
+
+Then, the index should be renamed from 1 to 100 using `rownames()`
+
+```{r}
+rownames(iris_5) <- c(1:length(iris_5$Species))
+head(iris_5)
+```
+
+Divide into 10 groups.
+
+```{r}
+group_1 <- iris_5[1:10,]
+group_2 <- iris_5[11:20,]
+group_3 <- iris_5[21:30,]
+group_4 <- iris_5[31:40,]
+group_5 <- iris_5[41:50,]
+group_6 <- iris_5[51:60,]
+group_7 <- iris_5[61:70,]
+group_8 <- iris_5[71:80,]
+group_9 <- iris_5[81:90,]
+group_10 <- iris_5[91:100,]
+```
+
+## 7. Take 9 of the ten groups and run a linear regression with petal width as a function of iris type and sepal width
+
+Here, I choose group 1-9 and combine to a training data frame.
+
+```{r}
+training <- rbind.data.frame(group_1, group_2, group_3, group_4, group_5, group_6, group_7, group_8, group_9)
+```
+
+Run a linear regression model to predict petal width by iris type and sepal width. Actuallt, `lm()` in R will create dummy variable automatically. So we can use `Species` directly.
+
+```{r}
+model_1 <- lm(Petal.Width ~ Species + Sepal.Width, data = training)
+summary(model_1)
+```
+
+From this model, we can conclude a predict equation that `Petal.Width = 0.13420 + 0.60056(when species is Iris-virginica) + 0.43203*Sepal.Width`
+
+## 8. Do that 10 times so that each group of ten obs is omitted from one of the regressions
+
+To make the linear regression 10 times, a for loop is a good idea to make it automatically.
+
+```{r}
+for (i in 1:10) {
+  beginIndex <- i + 10 * (i - 1)
+  endIndex <- beginIndex + 9
+  testing <- iris_5[beginIndex:endIndex,]
+  training <- iris_5[!(row.names(iris_5) %in% row.names(testing)),]
+  model <- lm(Petal.Width ~ Species + Sepal.Width, data = training)
+  cat("model", i, "Coefficients:", "\n")
+  cat("Intercept:", model$coefficients[1],"\n")
+  cat("SpeciesIris-virginica:", model$coefficients[2],"\n")
+  cat("Sepal.Width :", model$coefficients[3],"\n")
+  cat("\n")
+}
+```
+
+## 9. Keep track of the intercept, dummy variable coefficient, and sepal width coefficient
+
+To record the intercept, dummy variable coefficient, and sepal width coefficient, we need to create to three variables to save the value. Then, do the loop.
+
+```{r}
+Intercept <- numeric(10)
+SpeciesIris_virginica <- numeric(10)
+Sepal.Width <- numeric(10)
+for (i in 1:10) {
+  beginIndex <- i + 10 * (i - 1)
+  endIndex <- beginIndex + 9
+  testing <- iris_5[beginIndex:endIndex,]
+  training <- iris_5[!(row.names(iris_5) %in% row.names(testing)),]
+  model <- lm(Petal.Width ~ Species + Sepal.Width, data = training)
+  Intercept[i] = model$coefficients[1]
+  SpeciesIris_virginica[i] <- model$coefficients[2]
+  Sepal.Width[i] <- model$coefficients[3]
+}
+cat("The Intercept values:", "\n")
+cat(Intercept, "\n")
+cat("\n")
+cat("The SpeciesIris-virginica values:", "\n")
+cat(SpeciesIris_virginica, "\n")
+cat("\n")
+cat("The Sepal.Width values:", "\n")
+cat(Sepal.Width, "\n")
+```
+
+## 10. Make a histogram (hist) of those three values (there will be 3 histograms with ten observations in each histogram).
+
+To draw histograms, `hist()` is a good function to use.
+
+```{r}
+hist(Intercept)
+hist(SpeciesIris_virginica)
+hist(Sepal.Width)
+```

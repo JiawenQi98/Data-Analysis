@@ -1,0 +1,84 @@
+---
+title: "Homework 3"
+author: "Jiawen Qi (jiq10)"
+date: "October 20, 2016"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Read in the iris data
+
+Iris data is embedded in Rstudio. We can directly use this one.
+
+```{r}
+iris <- iris
+summary(iris) # get a summary
+head(iris) # check the data
+```
+
+## 2. We only use sepal length as a variable
+
+```{r}
+iris_1 <- iris[,-c(2, 3, 4)]
+summary(iris_1) # get a summary
+head(iris_1) # check the data
+```
+
+## 3. Create a 10 fold knn execution with k = 5.And from the testing set keep track of what each observation was predicted to be.
+
+```{r}
+iris_1$random <- runif(nrow(iris_1)) # add one random column
+iris_1 <- iris_1[order(iris_1$random),] # order by random number
+for (i in 1:nrow(iris)) {
+  iris_1$group[i] <- (i%%10) + 1 # make 10 groups
+}
+iris_1$results <- c(rep("predicted",150)) # create a new column to store the predict result
+table(iris_1$Species,iris_1$group) # these groups are random
+library(class) # open the library for knn
+for (i in 1:10) {
+  train.data <- as.matrix((iris_1[iris_1$group != i,1])) # get the value of sepal length
+  train.class <- as.matrix((iris_1[iris_1$group != i,2])) # get the class
+  test.data <- as.matrix((iris_1[iris_1$group == i,1])) # get the date to be predicted
+  knn5 = knn(train.data,            # training data as a matrix
+             test.data,             # testing data as a matrix
+             train.class,           # class for training data
+             k=5)                   # k = 5
+  test.predicted <- data.frame(test.data, pred = knn5) # get predicted values for test
+  iris_1$results[iris_1$group == i] <- test.predicted$pred  # merge predicted into iris
+}
+```
+
+## 4. Create a confusion matrix of the final results.
+
+```{r}
+confusion_matrix <- table(iris_1$results, iris_1$Species) # the results matrix
+print(confusion_matrix) # print the confusion matrix
+row.names(confusion_matrix) <- c("setosa", "versicolor", "virginica") # change the row name and print again
+print(confusion_matrix)
+```
+
+## 5. Create a density plot of correct and incorrect predictions as a function of sepal length.
+
+```{r}
+iris_1$Species <- as.character(iris_1$Species)
+iris_1$results <- as.character(iris_1$results)
+iris_1$result.lable <- "FALSE" 
+for (i in 1:150) {
+  if(iris_1$Species[i] %in% c("setosa") && iris_1$results[i] %in% c("1")) {
+  iris_1$result.lable[i] <- "TRUE" 
+  }
+  if(iris_1$Species[i] %in% c("versicolor") && iris_1$results[i] %in% c("2")) {
+  iris_1$result.lable[i] <- "TRUE" 
+  }
+  if(iris_1$Species[i] %in% c("virginica") && iris_1$results[i] %in% c("3")) {
+  iris_1$result.lable[i] <- "TRUE" 
+  }
+}
+iris_1$result.lable <- as.factor(iris_1$result.lable)
+cdplot(result.lable ~ Sepal.Length, 
+       data = iris_1, 
+       main = "density plot of predict results ") # conditional density plot
+```
